@@ -55,20 +55,27 @@ const htmlTemplate = `<!DOCTYPE html>
         }
         video {
             width: 100%;
+            max-width: 640px;
+            height: 360px;
             background-color: #000;
             border-radius: 4px;
+            object-fit: contain;
+            margin: 0 auto;
+            display: block;
         }
         .player-container {
             margin-top: 20px;
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(680px, 1fr));
             gap: 20px;
+            justify-items: center;
         }
         .player-wrapper {
             background-color: #fff;
             padding: 15px;
             border-radius: 8px;
             box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            width: 680px;
         }
         .player-url {
             font-size: 14px;
