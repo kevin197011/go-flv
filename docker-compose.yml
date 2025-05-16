@@ -1,0 +1,15 @@
+services:
+  flv-player:
+    build: .
+    container_name: flv-player
+    ports:
+      - "8080:8080"
+    restart: always
+    environment:
+      - GIN_MODE=release
+    networks:
+      - flv-network
+
+networks:
+  flv-network:
+    driver: bridge
