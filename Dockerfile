@@ -1,11 +1,11 @@
 # 使用官方 Golang 镜像作为基础镜像
-FROM golang:1.24-alpine
+FROM golang:1.24-alpine AS builder
 
 # 设置工作目录
 WORKDIR /app
 
 # 复制 go.mod 和 go.sum
-COPY go.mod ./
+COPY go.mod go.sum ./
 
 # 下载依赖
 RUN go mod download
@@ -14,7 +14,16 @@ RUN go mod download
 COPY . .
 
 # 构建应用
-RUN go build -o main .
+RUN CGO_ENABLED=0 GOOS=linux go build -o main .
+
+# 使用轻量级的 Alpine 镜像
+FROM alpine:latest
+
+# 设置工作目录
+WORKDIR /app
+
+# 从构建阶段复制二进制文件
+COPY --from=builder /app/main .
 
 # 暴露端口
 EXPOSE 8080
