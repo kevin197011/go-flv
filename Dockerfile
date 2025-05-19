@@ -4,14 +4,22 @@ FROM golang:1.24-alpine AS builder
 # 设置工作目录
 WORKDIR /app
 
+# 安装 swag
+RUN go install github.com/swaggo/swag/cmd/swag@latest
+
 # 复制 go.mod 和 go.sum
 COPY go.mod go.sum ./
 
 # 下载依赖
+RUN go mod tidy
 RUN go mod download
 
 # 复制源代码
 COPY . .
+
+# 生成 Swagger 文档
+RUN go env GOPATH && \
+    $(go env GOPATH)/bin/swag init
 
 # 构建应用
 RUN CGO_ENABLED=0 GOOS=linux go build -o main .

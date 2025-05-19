@@ -6,7 +6,11 @@ import (
 	"io/fs"
 	"net/http"
 
+	_ "go-flv/docs"
+
 	"github.com/gin-gonic/gin"
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
 )
 
 //go:embed templates
@@ -14,6 +18,23 @@ var templatesFS embed.FS
 
 //go:embed static
 var staticFS embed.FS
+
+// @title           FLV Player API
+// @version         1.0
+// @description     A simple FLV video player service
+// @termsOfService  http://swagger.io/terms/
+
+// @contact.name   API Support
+// @contact.url    http://www.swagger.io/support
+// @contact.email  support@swagger.io
+
+// @license.name  MIT
+// @license.url   https://opensource.org/licenses/MIT
+
+// @host      localhost:8080
+// @BasePath  /api/v1
+
+// @securityDefinitions.basic  BasicAuth
 
 func CORSMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -26,6 +47,39 @@ func CORSMiddleware() gin.HandlerFunc {
 		}
 		c.Next()
 	}
+}
+
+// @Summary     Get player page
+// @Description Get the main player page
+// @Tags        pages
+// @Produce     html
+// @Success     200 {string} string "HTML page"
+// @Router      / [get]
+func getPlayerPage(c *gin.Context) {
+	c.HTML(200, "index.html", gin.H{
+		"URL":       "",
+		"HideInput": false,
+	})
+}
+
+// @Summary     Get video page
+// @Description Get the video player page with a specific URL
+// @Tags        pages
+// @Produce     html
+// @Param       url  query    string  true  "Video URL"
+// @Success     200 {string} string "HTML page"
+// @Router      /video [get]
+func getVideoPage(c *gin.Context) {
+	url := c.Query("url")
+	if url == "" {
+		c.Redirect(302, "/")
+		return
+	}
+
+	c.HTML(200, "index.html", gin.H{
+		"URL":       url,
+		"HideInput": true,
+	})
 }
 
 func main() {
@@ -46,25 +100,19 @@ func main() {
 	}
 	r.StaticFS("/static", http.FS(subFS))
 
-	r.GET("/", func(c *gin.Context) {
-		c.HTML(200, "index.html", gin.H{
-			"URL":       "",
-			"HideInput": false,
-		})
-	})
+	// Swagger documentation
+	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
-	r.GET("/video", func(c *gin.Context) {
-		url := c.Query("url")
-		if url == "" {
-			c.Redirect(302, "/")
-			return
-		}
+	// API routes
+	api := r.Group("/api/v1")
+	{
+		api.GET("/", getPlayerPage)
+		api.GET("/video", getVideoPage)
+	}
 
-		c.HTML(200, "index.html", gin.H{
-			"URL":       url,
-			"HideInput": true,
-		})
-	})
+	// Web routes
+	r.GET("/", getPlayerPage)
+	r.GET("/video", getVideoPage)
 
 	r.Run(":8080")
 }

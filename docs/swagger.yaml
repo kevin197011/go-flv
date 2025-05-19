@@ -1,0 +1,51 @@
+basePath: /api/v1
+host: localhost:8080
+info:
+  contact:
+    email: support@swagger.io
+    name: API Support
+    url: http://www.swagger.io/support
+  description: A simple FLV video player service
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+  termsOfService: http://swagger.io/terms/
+  title: FLV Player API
+  version: "1.0"
+paths:
+  /:
+    get:
+      description: Get the main player page
+      produces:
+      - text/html
+      responses:
+        "200":
+          description: HTML page
+          schema:
+            type: string
+      summary: Get player page
+      tags:
+      - pages
+  /video:
+    get:
+      description: Get the video player page with a specific URL
+      parameters:
+      - description: Video URL
+        in: query
+        name: url
+        required: true
+        type: string
+      produces:
+      - text/html
+      responses:
+        "200":
+          description: HTML page
+          schema:
+            type: string
+      summary: Get video page
+      tags:
+      - pages
+securityDefinitions:
+  BasicAuth:
+    type: basic
+swagger: "2.0"
