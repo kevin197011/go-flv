@@ -2,36 +2,41 @@ let players = [];
 
 function showError(message) {
   const errorElement = document.getElementById("errorMessage");
-  errorElement.textContent = message;
-  errorElement.style.display = "block";
+  errorElement.querySelector("h3").textContent = message;
+  errorElement.classList.remove("hidden");
 }
 
 function clearPlayers() {
   destroyAllPlayers();
   document.getElementById("flvUrls").value = "";
-  document.getElementById("errorMessage").style.display = "none";
+  document.getElementById("errorMessage").classList.add("hidden");
 }
 
 function createPlayerElement(url, index) {
   const wrapper = document.createElement("div");
-  wrapper.className = "player-wrapper";
+  wrapper.className = "bg-white rounded-lg shadow overflow-hidden";
 
   const urlDiv = document.createElement("div");
-  urlDiv.className = "player-url";
+  urlDiv.className = "px-4 py-2 text-sm text-gray-600 font-mono break-all border-b border-gray-200";
   urlDiv.textContent = url;
   wrapper.appendChild(urlDiv);
 
+  const videoWrapper = document.createElement("div");
+  videoWrapper.className = "aspect-video bg-black";
+
   const video = document.createElement("video");
   video.id = "videoElement_" + index;
+  video.className = "w-full h-full object-contain";
   video.controls = true;
   video.muted = true;
-  wrapper.appendChild(video);
+  videoWrapper.appendChild(video);
+  wrapper.appendChild(videoWrapper);
 
   const controls = document.createElement("div");
-  controls.className = "player-controls";
+  controls.className = "px-4 py-3 bg-gray-50 flex justify-end";
 
   const muteButton = document.createElement("button");
-  muteButton.className = "control-button";
+  muteButton.className = "rounded-md bg-primary px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-primary-dark focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary";
   muteButton.textContent = "开启/关闭声音";
   muteButton.onclick = () => toggleMute(video);
   controls.appendChild(muteButton);
@@ -74,7 +79,7 @@ function playVideos() {
   destroyAllPlayers();
   const playersContainer = document.getElementById("players");
   const errorElement = document.getElementById("errorMessage");
-  errorElement.style.display = "none";
+  errorElement.classList.add("hidden");
 
   urls.forEach((url, index) => {
     try {
@@ -101,9 +106,9 @@ function playVideos() {
       });
 
       players.push({ flvPlayer, video });
-    } catch (error) {
-      console.error("Error initializing player " + index + ":", error);
-      showError("播放器 " + (index + 1) + " 初始化失败: " + error.message);
+    } catch (e) {
+      console.error("Player " + index + " creation error:", e);
+      showError("播放器 " + (index + 1) + " 创建失败: " + e.message);
     }
   });
 }

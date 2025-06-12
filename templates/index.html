@@ -1,30 +1,69 @@
 <!DOCTYPE html>
-<html lang="zh">
+<html lang="zh" class="h-full bg-gray-100">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>FLV 播放器</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/flv.js/1.6.2/flv.min.js"></script>
-    <link rel="stylesheet" href="/static/css/player.css">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#4CAF50',
+                        'primary-dark': '#45a049',
+                        danger: '#f44336',
+                        'danger-dark': '#d32f2f'
+                    }
+                }
+            }
+        }
+    </script>
 </head>
-<body>
-    <div class="container">
-        <h1>FLV 播放器</h1>
-        <div class="input-group {{if .HideInput}}hidden{{end}}">
-            <textarea id="flvUrls" placeholder="请输入 FLV 视频 URL（每行一个）">{{.URL}}</textarea>
-            <div class="controls">
-                <button class="control-button clear" onclick="clearPlayers()">清空</button>
-                <button onclick="playVideos()">播放全部</button>
+<body class="h-full">
+    <div class="min-h-full">
+        <div class="bg-white shadow">
+            <div class="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+                <h1 class="text-3xl font-bold tracking-tight text-gray-900">FLV 播放器</h1>
             </div>
         </div>
-        <div id="errorMessage"></div>
-        <div id="players" class="player-container">
-        </div>
-        <div class="footer">
-            系统运维部驱动
-        </div>
+        <main>
+            <div class="mx-auto max-w-7xl py-6 sm:px-6 lg:px-8">
+                <div class="px-4 py-6 sm:px-0">
+                    <div class="input-group {{if .HideInput}}hidden{{end}} mb-6">
+                        <textarea id="flvUrls"
+                            class="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-primary sm:text-sm sm:leading-6 font-mono min-h-[100px] mb-4"
+                            placeholder="请输入 FLV 视频 URL（每行一个）">{{.URL}}</textarea>
+                        <div class="flex justify-end gap-4">
+                            <button onclick="clearPlayers()"
+                                class="rounded-md bg-danger px-3.5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-danger-dark focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-danger">
+                                清空
+                            </button>
+                            <button onclick="playVideos()"
+                                class="rounded-md bg-primary px-3.5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-primary-dark focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary">
+                                播放全部
+                            </button>
+                        </div>
+                    </div>
+                    <div id="errorMessage" class="hidden rounded-md bg-red-50 p-4 mb-6">
+                        <div class="flex">
+                            <div class="ml-3">
+                                <h3 class="text-sm font-medium text-red-800"></h3>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="players" class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    </div>
+                </div>
+            </div>
+        </main>
+        <footer class="bg-white shadow mt-8">
+            <div class="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8">
+                <p class="text-center text-sm text-gray-500">系统运维部驱动</p>
+            </div>
+        </footer>
     </div>
-
     <script src="/static/js/player.js"></script>
 </body>
 </html>

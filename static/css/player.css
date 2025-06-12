@@ -57,6 +57,11 @@ video {
     gap: 20px;
     justify-items: center;
 }
+
+.player-container:has(> :only-child) {
+    grid-template-columns: minmax(400px, 800px);
+}
+
 .player-wrapper {
     background-color: #fff;
     padding: 15px;
@@ -120,4 +125,14 @@ video {
     font-size: 14px;
     padding: 10px 0;
     border-top: 1px solid #eee;
+}
+
+@media (max-width: 1200px) {
+    .player-container {
+        grid-template-columns: 1fr;
+    }
+
+    .player-wrapper {
+        max-width: 800px;
+    }
 }
