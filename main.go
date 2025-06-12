@@ -1,9 +1,19 @@
 package main
 
 import (
+	"embed"
 	_ "go-flv/docs"
 	"go-flv/routes"
+	"html/template"
+	"io/fs"
+	"net/http"
 )
+
+//go:embed templates/*
+var templatesFS embed.FS
+
+//go:embed static/*
+var staticFS embed.FS
 
 // @title           Go FLV Player API
 // @version         1.0
@@ -24,7 +34,20 @@ import (
 
 func main() {
 	r := routes.SetupRouter()
-	r.LoadHTMLGlob("templates/index.html")
-	r.Static("/static", "./static")
+
+	// 加载嵌入的模板文件
+	tmpl, err := template.ParseFS(templatesFS, "templates/*.html")
+	if err != nil {
+		panic(err)
+	}
+	r.SetHTMLTemplate(tmpl)
+
+	// 提供嵌入的静态文件
+	staticSubFS, err := fs.Sub(staticFS, "static")
+	if err != nil {
+		panic(err)
+	}
+	r.StaticFS("/static", http.FS(staticSubFS))
+
 	r.Run(":8080")
 }
