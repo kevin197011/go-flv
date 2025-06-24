@@ -2,11 +2,14 @@ package main
 
 import (
 	"embed"
-	_ "go-flv/docs"
-	"go-flv/routes"
 	"html/template"
 	"io/fs"
+	"log"
 	"net/http"
+
+	"go-flv/database"
+	_ "go-flv/docs"
+	"go-flv/routes"
 )
 
 //go:embed templates/*
@@ -33,6 +36,11 @@ var staticFS embed.FS
 // @securityDefinitions.basic  BasicAuth
 
 func main() {
+	// 初始化数据库
+	if err := database.InitDB(); err != nil {
+		log.Fatal("Failed to initialize database:", err)
+	}
+
 	r := routes.SetupRouter()
 
 	// 加载嵌入的模板文件

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="zh" class="h-full bg-gray-100">
+<html lang="zh" class="h-full bg-gradient-to-br from-slate-100 to-blue-50">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -11,58 +11,134 @@
             theme: {
                 extend: {
                     colors: {
-                        primary: '#4CAF50',
-                        'primary-dark': '#45a049',
-                        danger: '#f44336',
-                        'danger-dark': '#d32f2f'
+                        primary: '#3b82f6',
+                        'primary-dark': '#2563eb',
+                        secondary: '#10b981',
+                        'secondary-dark': '#059669',
+                        danger: '#ef4444',
+                        'danger-dark': '#dc2626',
+                        warning: '#f59e0b',
+                        'warning-dark': '#d97706'
                     }
                 }
             }
         }
     </script>
 </head>
-<body class="h-full">
+<body class="h-full font-sans">
     <div class="min-h-full">
-        <div class="bg-white shadow">
-            <div class="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-                <h1 class="text-3xl font-bold tracking-tight text-gray-900">FLV 播放器</h1>
+        <!-- Navigation matching admin page style -->
+        <nav class="bg-white shadow-lg border-b-4 border-primary">
+            <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+                <div class="flex h-16 items-center justify-between">
+                    <div class="flex items-center">
+                        <div class="w-8 h-8 bg-primary rounded-lg flex items-center justify-center mr-3">
+                            <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h1m4 0h1m-6 4h.01M15 14h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                        </div>
+                        <h1 class="text-xl font-bold text-gray-900">FLV 视频播放器</h1>
+                    </div>
+                    <div class="flex items-center space-x-4">
+                        <a href="/monitor" class="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 hover:text-primary transition-colors duration-200">
+                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
+                            </svg>
+                            监控大屏
+                        </a>
+                        <a href="/admin" class="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 hover:text-primary transition-colors duration-200">
+                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                            </svg>
+                            管理后台
+                        </a>
+                    </div>
+                </div>
             </div>
-        </div>
-        <main>
-            <div class="mx-auto max-w-7xl py-6 sm:px-6 lg:px-8">
-                <div class="px-4 py-6 sm:px-0">
-                    <div class="input-group {{if .HideInput}}hidden{{end}} mb-6">
-                        <textarea id="flvUrls"
-                            class="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-primary sm:text-sm sm:leading-6 font-mono min-h-[100px] mb-4"
-                            placeholder="请输入 FLV 视频 URL（每行一个）">{{.URL}}</textarea>
+        </nav>
+
+        <main class="py-8 pb-16">
+            <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+                <!-- URL Input Section -->
+                <div class="{{if .HideInput}}hidden{{end}} bg-white shadow-xl rounded-xl border border-gray-200 overflow-hidden mb-8">
+                    <div class="bg-gradient-to-r from-primary to-primary-dark px-6 py-4">
+                        <h2 class="text-xl font-bold text-white flex items-center">
+                            <svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path>
+                            </svg>
+                            视频地址输入
+                        </h2>
+                    </div>
+                    <div class="p-6">
+                        <div class="mb-6">
+                            <label class="block text-sm font-semibold text-gray-800 mb-2">FLV 视频 URL（每行一个）</label>
+                            <textarea id="flvUrls"
+                                class="block w-full rounded-lg border-2 border-gray-300 bg-gray-50 px-3 py-2 text-gray-900 placeholder-gray-500 focus:border-primary focus:bg-white focus:ring-primary focus:ring-2 focus:ring-opacity-50 transition-all duration-200 font-mono min-h-[120px]"
+                                placeholder="请输入 FLV 视频 URL，每行一个&#10;例如：&#10;https://example.com/video1.flv&#10;https://example.com/video2.flv">{{.URL}}</textarea>
+                        </div>
                         <div class="flex justify-end gap-4">
                             <button onclick="clearPlayers()"
-                                class="rounded-md bg-danger px-3.5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-danger-dark focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-danger">
-                                清空
+                                class="inline-flex items-center px-4 py-2 border border-red-300 shadow-sm text-sm leading-4 font-medium rounded-lg text-red-700 bg-red-50 hover:bg-red-100 hover:border-red-400 transition-colors duration-200">
+                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                </svg>
+                                清空播放器
                             </button>
                             <button onclick="playVideos()"
-                                class="rounded-md bg-primary px-3.5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-primary-dark focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary">
-                                播放全部
+                                class="inline-flex items-center px-6 py-3 border border-transparent text-sm font-semibold rounded-lg text-white bg-gradient-to-r from-secondary to-secondary-dark shadow-lg hover:from-secondary-dark hover:to-secondary focus:outline-none focus:ring-2 focus:ring-secondary focus:ring-offset-2 transform hover:scale-105 transition-all duration-200">
+                                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h1m4 0h1m-6 4h.01M15 14h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                                开始播放
                             </button>
                         </div>
                     </div>
-                    <div id="errorMessage" class="hidden rounded-md bg-red-50 p-4 mb-6">
-                        <div class="flex">
-                            <div class="ml-3">
-                                <h3 class="text-sm font-medium text-red-800"></h3>
-                            </div>
-                        </div>
+                </div>
+
+
+
+                <!-- Video Players Section -->
+                <div class="bg-white shadow-xl rounded-xl border border-gray-200 overflow-hidden">
+                    <div class="bg-gradient-to-r from-slate-700 to-slate-800 px-6 py-4">
+                        <h3 class="text-xl font-bold text-white flex items-center">
+                            <svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+                            </svg>
+                            视频播放器
+                            <span class="ml-2 px-2 py-1 bg-white bg-opacity-20 rounded-full text-sm" id="playerCount">(0)</span>
+                        </h3>
                     </div>
-                    <div id="players" class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div class="p-6">
+                        <div id="players" class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                            <!-- Video players will be inserted here -->
+                        </div>
+                        <div id="emptyState" class="text-center py-12">
+                            <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+                            </svg>
+                            <h3 class="mt-2 text-sm font-medium text-gray-900">暂无视频</h3>
+                            <p class="mt-1 text-sm text-gray-500">请在上方输入 FLV 视频地址开始播放</p>
+                        </div>
                     </div>
                 </div>
             </div>
         </main>
-        <footer class="bg-white shadow mt-8">
-            <div class="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8">
-                <p class="text-center text-sm text-gray-500">系统运维部驱动</p>
+
+        <!-- Footer - Fixed at bottom -->
+        <footer class="fixed bottom-0 left-0 right-0 bg-white bg-opacity-95 backdrop-blur-sm shadow-lg border-t border-gray-200 z-10">
+            <div class="mx-auto max-w-7xl px-4 py-2 sm:px-6 lg:px-8">
+                <p class="text-center text-xs text-gray-500 flex items-center justify-center">
+                    <svg class="w-3 h-3 mr-1.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"></path>
+                    </svg>
+                    系统运维部驱动
+                </p>
             </div>
         </footer>
+
+        <!-- 通知容器 -->
+        <div id="notification-container" class="fixed top-4 right-4 z-50 space-y-2"></div>
     </div>
     <script src="/static/js/player.js"></script>
 </body>

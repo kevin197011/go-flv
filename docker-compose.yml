@@ -4,12 +4,9 @@ services:
     container_name: flv-player
     ports:
       - "8080:8080"
-    restart: always
+    volumes:
+      - ./data:/app/data
     environment:
+      - DB_PATH=/app/data/flv_videos.db
       - GIN_MODE=release
-    networks:
-      - flv-network
-
-networks:
-  flv-network:
-    driver: bridge
+    restart: unless-stopped

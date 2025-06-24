@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="zh" class="h-full bg-gradient-to-br from-slate-900 to-gray-900">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{.title}}</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/flv.js/1.6.2/flv.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#3b82f6',
+                        'primary-dark': '#2563eb',
+                        secondary: '#10b981',
+                        'secondary-dark': '#059669',
+                        danger: '#ef4444',
+                        'danger-dark': '#dc2626',
+                        warning: '#f59e0b',
+                        'warning-dark': '#d97706'
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="h-full font-sans text-white">
+    <div class="min-h-full">
+        <!-- Navigation -->
+        <nav class="bg-black bg-opacity-50 backdrop-blur-md border-b border-gray-700">
+            <div class="mx-auto max-w-full px-4 sm:px-6 lg:px-8">
+                <div class="flex h-14 items-center justify-between">
+                    <div class="flex items-center">
+                        <div class="w-8 h-8 bg-red-600 rounded-lg flex items-center justify-center mr-3">
+                            <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+                            </svg>
+                        </div>
+                        <h1 class="text-lg font-bold text-white">视频监控中心</h1>
+                    </div>
+                    <div class="flex items-center space-x-4">
+                        <div class="flex items-center">
+                            <span class="w-2 h-2 bg-green-400 rounded-full mr-2"></span>
+                            <span class="text-sm text-gray-300">在线</span>
+                        </div>
+                        <div class="text-sm text-gray-300">
+                            <span id="videoCount">0</span> 个视频
+                        </div>
+                        <a href="/" class="inline-flex items-center px-3 py-1.5 border border-gray-600 shadow-sm text-xs leading-4 font-medium rounded-md text-gray-300 bg-gray-800 hover:bg-gray-700 hover:text-white transition-colors duration-200">
+                            <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+                            </svg>
+                            返回
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <main class="py-4 pb-16">
+            <div class="mx-auto max-w-full px-4 sm:px-6 lg:px-8">
+                <!-- Loading State -->
+                <div id="loadingState" class="text-center py-12">
+                    <svg class="animate-spin h-8 w-8 mx-auto mb-4 text-blue-400" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <h3 class="text-lg font-medium text-white mb-2">正在加载视频...</h3>
+                    <p class="text-sm text-gray-400">请稍候</p>
+                </div>
+
+                <!-- Error State -->
+                <div id="errorState" class="hidden text-center py-12">
+                    <svg class="h-12 w-12 mx-auto mb-4 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    <h3 class="text-lg font-medium text-white mb-2">加载失败</h3>
+                    <p class="text-sm text-gray-400 mb-4" id="errorMessage">无法获取视频列表</p>
+                    <button onclick="loadVideos()" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2">
+                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                        </svg>
+                        重新加载
+                    </button>
+                </div>
+
+                <!-- Empty State -->
+                <div id="emptyState" class="hidden text-center py-12">
+                    <svg class="mx-auto h-12 w-12 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+                    </svg>
+                    <h3 class="mt-2 text-lg font-medium text-white">暂无视频</h3>
+                    <p class="mt-1 text-sm text-gray-400">系统中还没有配置任何视频</p>
+                </div>
+
+                <!-- Video Grid -->
+                <div id="videoGrid" class="hidden grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3">
+                    <!-- Video players will be inserted here -->
+                </div>
+            </div>
+        </main>
+
+        <!-- Footer - Fixed at bottom -->
+        <footer class="fixed bottom-0 left-0 right-0 bg-black bg-opacity-50 backdrop-blur-md border-t border-gray-700 z-10">
+            <div class="mx-auto max-w-full px-4 py-2 sm:px-6 lg:px-8">
+                <p class="text-center text-xs text-gray-500 flex items-center justify-center">
+                    <svg class="w-3 h-3 mr-1.5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"></path>
+                    </svg>
+                    系统运维部驱动
+                </p>
+            </div>
+        </footer>
+
+        <!-- 通知容器 -->
+        <div id="notification-container" class="fixed top-4 right-4 z-50 space-y-2"></div>
+    </div>
+
+    <script>
+        let players = [];
+        let videos = [];
+
+        // 通知系统
+        function showNotification(message, type = 'error') {
+            const container = document.getElementById('notification-container');
+            const id = Date.now();
+
+            const notification = document.createElement('div');
+            notification.className = `max-w-sm w-full shadow-lg rounded-lg pointer-events-auto ring-1 ring-black ring-opacity-5 overflow-hidden border transform transition-all duration-300 ease-out ${
+                type === 'success' ? 'bg-green-50 border-green-200' :
+                type === 'warning' ? 'bg-yellow-50 border-yellow-200' :
+                'bg-red-50 border-red-200'
+            }`;
+            notification.style.transform = 'translateY(-100%) translateX(100%)';
+            notification.style.opacity = '0';
+
+            notification.innerHTML = `
+                <div class="p-4">
+                    <div class="flex items-start">
+                        <div class="flex-shrink-0">
+                            ${type === 'success' ?
+                                '<svg class="h-6 w-6 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>' :
+                                type === 'warning' ?
+                                '<svg class="h-6 w-6 text-yellow-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>' :
+                                '<svg class="h-6 w-6 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>'
+                            }
+                        </div>
+                        <div class="ml-3 w-0 flex-1 pt-0.5">
+                            <p class="text-sm font-medium ${
+                                type === 'success' ? 'text-green-900' :
+                                type === 'warning' ? 'text-yellow-900' :
+                                'text-red-900'
+                            }">${message}</p>
+                        </div>
+                        <div class="ml-4 flex-shrink-0 flex">
+                            <button onclick="removeNotification(${id})" class="rounded-md inline-flex focus:outline-none focus:ring-2 focus:ring-offset-2 ${
+                                type === 'success' ? 'text-green-400 hover:text-green-500' :
+                                type === 'warning' ? 'text-yellow-400 hover:text-yellow-500' :
+                                'text-red-400 hover:text-red-500'
+                            }">
+                                <svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            notification.id = `notification-${id}`;
+            container.appendChild(notification);
+
+            // Animate in
+            requestAnimationFrame(() => {
+                notification.style.transform = 'translateY(0) translateX(0)';
+                notification.style.opacity = '1';
+            });
+
+            // Auto remove after 4 seconds
+            setTimeout(() => {
+                removeNotification(id);
+            }, 4000);
+        }
+
+        function removeNotification(id) {
+            const notification = document.getElementById(`notification-${id}`);
+            if (notification) {
+                notification.style.transform = 'translateY(-100%) translateX(100%)';
+                notification.style.opacity = '0';
+                setTimeout(() => {
+                    if (notification.parentNode) {
+                        notification.parentNode.removeChild(notification);
+                    }
+                }, 300);
+            }
+        }
+
+        function showError(message) {
+            document.getElementById('loadingState').style.display = 'none';
+            document.getElementById('errorState').style.display = 'block';
+            document.getElementById('emptyState').style.display = 'none';
+            document.getElementById('videoGrid').style.display = 'none';
+            document.getElementById('errorMessage').textContent = message;
+            showNotification(message, 'error');
+        }
+
+        function showEmpty() {
+            document.getElementById('loadingState').style.display = 'none';
+            document.getElementById('errorState').style.display = 'none';
+            document.getElementById('emptyState').style.display = 'block';
+            document.getElementById('videoGrid').style.display = 'none';
+        }
+
+        function showGrid() {
+            document.getElementById('loadingState').style.display = 'none';
+            document.getElementById('errorState').style.display = 'none';
+            document.getElementById('emptyState').style.display = 'none';
+            document.getElementById('videoGrid').style.display = 'grid';
+        }
+
+        function updateVideoCount() {
+            document.getElementById('videoCount').textContent = videos.length;
+        }
+
+        function createVideoPlayer(video, index) {
+            const container = document.createElement('div');
+            container.className = 'bg-gray-800 bg-opacity-50 backdrop-blur-sm rounded-lg border border-gray-600 overflow-hidden hover:border-gray-500 transition-all duration-200';
+
+            // Header
+            const header = document.createElement('div');
+            header.className = 'bg-gray-900 bg-opacity-70 px-3 py-2 border-b border-gray-600';
+            header.innerHTML = `
+                <div class="flex items-center justify-between">
+                    <h4 class="text-xs font-medium text-white truncate flex-1 mr-2">${video.name}</h4>
+                    <span class="px-2 py-0.5 bg-green-600 bg-opacity-50 rounded-full text-xs text-green-200 flex items-center">
+                        <span class="w-1.5 h-1.5 bg-green-400 rounded-full mr-1"></span>
+                        LIVE
+                    </span>
+                </div>
+            `;
+            container.appendChild(header);
+
+            // Video wrapper
+            const videoWrapper = document.createElement('div');
+            videoWrapper.className = 'aspect-video bg-black relative';
+
+            const videoElement = document.createElement('video');
+            videoElement.id = `monitor_video_${index}`;
+            videoElement.className = 'w-full h-full object-contain';
+            videoElement.muted = true;
+            videoElement.autoplay = true;
+            videoElement.playsInline = true;
+
+            // Loading indicator
+            const loadingDiv = document.createElement('div');
+            loadingDiv.className = 'absolute inset-0 flex items-center justify-center bg-black bg-opacity-75';
+            loadingDiv.innerHTML = `
+                <div class="text-center">
+                    <svg class="animate-spin h-6 w-6 mx-auto mb-2 text-blue-400" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <p class="text-xs text-gray-300">连接中...</p>
+                </div>
+            `;
+
+            videoWrapper.appendChild(videoElement);
+            videoWrapper.appendChild(loadingDiv);
+            container.appendChild(videoWrapper);
+
+            // Status bar
+            const statusBar = document.createElement('div');
+            statusBar.className = 'bg-gray-900 bg-opacity-70 px-3 py-1.5 flex items-center justify-between text-xs';
+            statusBar.innerHTML = `
+                <div class="flex items-center text-gray-400">
+                    <span class="w-1.5 h-1.5 bg-gray-400 rounded-full mr-1.5"></span>
+                    <span id="status_${index}">准备中</span>
+                </div>
+                <button onclick="toggleMute(${index})" class="text-gray-400 hover:text-white transition-colors">
+                    <svg id="muteIcon_${index}" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" clip-rule="evenodd"></path>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2"></path>
+                    </svg>
+                </button>
+            `;
+            container.appendChild(statusBar);
+
+            // Event listeners
+            videoElement.addEventListener('canplay', () => {
+                loadingDiv.style.display = 'none';
+                document.getElementById(`status_${index}`).innerHTML = `
+                    <span class="w-1.5 h-1.5 bg-green-400 rounded-full mr-1.5"></span>
+                    <span>播放中</span>
+                `;
+            });
+
+            videoElement.addEventListener('error', () => {
+                loadingDiv.innerHTML = `
+                    <div class="text-center">
+                        <svg class="h-6 w-6 mx-auto mb-2 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        <p class="text-xs text-red-300">连接失败</p>
+                    </div>
+                `;
+                document.getElementById(`status_${index}`).innerHTML = `
+                    <span class="w-1.5 h-1.5 bg-red-400 rounded-full mr-1.5"></span>
+                    <span>连接失败</span>
+                `;
+            });
+
+            return { container, videoElement };
+        }
+
+        function toggleMute(index) {
+            const video = document.getElementById(`monitor_video_${index}`);
+            const icon = document.getElementById(`muteIcon_${index}`);
+
+            video.muted = !video.muted;
+
+            if (video.muted) {
+                icon.innerHTML = `
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" clip-rule="evenodd"></path>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2"></path>
+                `;
+            } else {
+                icon.innerHTML = `
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 14.142M6.343 6.343a1 1 0 00-1.414 1.414L6.343 9.172a4 4 0 000 5.656l-1.414 1.414a1 1 0 001.414 1.414L7.757 16.243a6 6 0 010-8.485L6.343 6.343z"></path>
+                `;
+            }
+        }
+
+        async function loadVideos() {
+            try {
+                const response = await fetch('/public/videos');
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                videos = await response.json();
+                updateVideoCount();
+
+                if (videos.length === 0) {
+                    showEmpty();
+                    showNotification('暂无可用视频', 'warning');
+                    return;
+                }
+
+                // Clear existing players
+                players.forEach(player => {
+                    if (player.flvPlayer) {
+                        player.flvPlayer.destroy();
+                    }
+                });
+                players = [];
+
+                const grid = document.getElementById('videoGrid');
+                grid.innerHTML = '';
+
+                let activeVideoCount = 0;
+
+                // Create players for each video
+                videos.forEach((video, index) => {
+                    if (video.status !== 'active') return;
+                    activeVideoCount++;
+
+                    const { container, videoElement } = createVideoPlayer(video, index);
+                    grid.appendChild(container);
+
+                    try {
+                        if (flvjs.isSupported()) {
+                            const flvPlayer = flvjs.createPlayer({
+                                type: 'flv',
+                                url: video.url,
+                                cors: true,
+                            });
+
+                            flvPlayer.attachMediaElement(videoElement);
+                            flvPlayer.load();
+
+                            flvPlayer.on(flvjs.Events.ERROR, (errorType, errorDetail) => {
+                                console.error(`Player ${index} Error:`, errorType, errorDetail);
+                                showNotification(`视频 "${video.name}" 播放失败`, 'error');
+                            });
+
+                            players.push({ flvPlayer, videoElement, video });
+                        } else {
+                            showNotification('浏览器不支持FLV播放', 'error');
+                        }
+                    } catch (e) {
+                        console.error(`Failed to create player for video ${index}:`, e);
+                        showNotification(`视频 "${video.name}" 加载失败`, 'error');
+                    }
+                });
+
+                showGrid();
+
+                if (activeVideoCount > 0) {
+                    showNotification(`成功加载 ${activeVideoCount} 个视频流`, 'success');
+                } else {
+                    showNotification('没有激活的视频流', 'warning');
+                }
+            } catch (error) {
+                console.error('Failed to load videos:', error);
+                showError('无法获取视频列表: ' + error.message);
+            }
+        }
+
+        // Auto-refresh every 30 seconds
+        function startAutoRefresh() {
+            setInterval(() => {
+                console.log('Auto-refreshing video list...');
+                loadVideos();
+            }, 30000);
+        }
+
+        // Initialize
+        window.onload = function() {
+            loadVideos();
+            startAutoRefresh();
+        };
+
+        // Cleanup on page unload
+        window.onbeforeunload = function() {
+            players.forEach(player => {
+                if (player.flvPlayer) {
+                    player.flvPlayer.destroy();
+                }
+            });
+        };
+    </script>
+</body>
+</html>

@@ -1,2 +1,6 @@
 .env
 Gemfile.lock
+go-flv
+*.db
+data/
+*.log
