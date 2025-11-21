@@ -1,6 +1,6 @@
 # GitHub Actions 工作流说明
 
-## Docker 镜像构建和推送
+## Docker 镜像构建和推送到 GitHub Package Registry
 
 ### 触发条件
 
@@ -8,7 +8,6 @@
 
 1. **推送到主分支** (`main` 或 `master`)
    - 构建并推送 Docker 镜像到 GitHub Container Registry (GHCR)
-   - 如果配置了 Docker Hub 密钥，也会推送到 Docker Hub
    - 标签格式：`latest`, `main-<sha>`, `master-<sha>`
 
 2. **创建版本标签** (例如 `v1.0.0`)
@@ -23,17 +22,9 @@
 
 ### 配置要求
 
-#### GitHub Container Registry (GHCR) - 自动配置
-- 无需额外配置，使用 `GITHUB_TOKEN` 自动认证
-- 镜像地址：`ghcr.io/<username>/<repository>`
+**无需额外配置！** 工作流使用 GitHub 自动提供的 `GITHUB_TOKEN` 进行认证。
 
-#### Docker Hub - 可选配置
-在 GitHub 仓库的 Settings > Secrets and variables > Actions 中配置以下密钥（可选）：
-
-- `DOCKER_USERNAME`: Docker Hub 用户名
-- `DOCKER_PASSWORD`: Docker Hub 密码或访问令牌
-
-如果不配置 Docker Hub 密钥，工作流仍会正常运行，只推送到 GHCR。
+镜像会自动推送到：`ghcr.io/<username>/<repository>`
 
 ### 镜像标签说明
 
@@ -54,11 +45,7 @@
 
 #### 拉取最新镜像
 ```bash
-# 从 GHCR 拉取
 docker pull ghcr.io/<username>/go-flv:latest
-
-# 从 Docker Hub 拉取（如果配置了）
-docker pull <username>/go-flv:latest
 ```
 
 #### 拉取特定版本
@@ -74,4 +61,20 @@ docker run -d -p 8080:8080 \
   -e DB_PATH=/app/data/flv_videos.db \
   ghcr.io/<username>/go-flv:latest
 ```
+
+#### 登录到 GHCR（首次使用需要）
+```bash
+echo $GITHUB_TOKEN | docker login ghcr.io -u <username> --password-stdin
+```
+
+### 查看镜像
+
+推送后，可以在 GitHub 仓库的 **Packages** 部分查看所有版本的镜像。
+
+### 权限说明
+
+默认情况下，推送到 GHCR 的镜像为私有。如果需要公开镜像：
+1. 前往 GitHub 仓库的 Packages 页面
+2. 选择对应的包
+3. 在 Package settings 中将可见性设置为 Public
 
