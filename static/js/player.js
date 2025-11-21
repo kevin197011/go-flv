@@ -351,10 +351,10 @@ function updateStats(playerIndex, stats) {
 
   if (bitrateEl) bitrateEl.textContent = formatBitrate(statsData.bitrate);
   if (fpsEl) fpsEl.textContent = statsData.fps.toFixed(1);
-  if (packetsEl) packetsEl.textContent = statsData.packets;
+  if (packetsEl) packetsEl.textContent = statsData.packets || 0;
   if (keyframesEl) keyframesEl.textContent = statsData.keyFrames;
   if (gopEl) gopEl.textContent = statsData.gop;
-  if (maxgopEl) maxgopEl.textContent = statsData.maxGOP;
+  if (maxgopEl) maxgopEl.textContent = statsData.maxGOP || 0;
 }
 
 function destroyAllPlayers() {
@@ -472,18 +472,51 @@ function playVideos() {
         lastPlayTime = video.currentTime;
       });
 
-      // 监听 flv.js 的统计信息（如果可用）
+      // 监听 flv.js 的统计信息
+      let lastTotalBytes = 0;
       const statsCheckInterval = setInterval(() => {
         try {
           // 尝试从 flv.js 获取统计信息
+          // flv.js 可能通过多种方式提供统计信息
+          let currentBytes = 0;
+
+          // 方法1: 检查 statisticsInfo 属性
           if (flvPlayer.statisticsInfo) {
             const info = flvPlayer.statisticsInfo;
-            if (info && info.totalBytesLoaded) {
-              const bytesDiff = info.totalBytesLoaded - stats.totalBytes;
-              if (bytesDiff > 0) {
-                stats.addBytes(bytesDiff);
-              }
+            if (info.totalBytesLoaded) {
+              currentBytes = info.totalBytesLoaded;
+            } else if (info.totalBytes) {
+              currentBytes = info.totalBytes;
             }
+          }
+
+          // 方法2: 检查 _statisticsInfo 属性（某些版本使用下划线前缀）
+          if (currentBytes === 0 && flvPlayer._statisticsInfo) {
+            const info = flvPlayer._statisticsInfo;
+            if (info.totalBytesLoaded) {
+              currentBytes = info.totalBytesLoaded;
+            } else if (info.totalBytes) {
+              currentBytes = info.totalBytes;
+            }
+          }
+
+          // 方法3: 检查是否有 getStatistics 方法
+          if (currentBytes === 0 && typeof flvPlayer.getStatistics === 'function') {
+            try {
+              const info = flvPlayer.getStatistics();
+              if (info && (info.totalBytesLoaded || info.totalBytes)) {
+                currentBytes = info.totalBytesLoaded || info.totalBytes;
+              }
+            } catch (e) {
+              // 忽略错误
+            }
+          }
+
+          // 如果有新的数据，更新统计
+          if (currentBytes > 0 && currentBytes > lastTotalBytes) {
+            const bytesDiff = currentBytes - lastTotalBytes;
+            stats.addBytes(bytesDiff);
+            lastTotalBytes = currentBytes;
           }
         } catch (e) {
           // 忽略错误
@@ -503,6 +536,27 @@ function playVideos() {
         }
       });
 
+      // 监听 STATISTICS_INFO 事件（如果 flv.js 支持）
+      if (flvjs.Events && flvjs.Events.STATISTICS_INFO) {
+        flvPlayer.on(flvjs.Events.STATISTICS_INFO, (info) => {
+          if (info) {
+            // 更新字节数
+            if (info.totalBytesLoaded || info.totalBytes) {
+              const currentBytes = info.totalBytesLoaded || info.totalBytes;
+              if (currentBytes > lastTotalBytes) {
+                const bytesDiff = currentBytes - lastTotalBytes;
+                stats.addBytes(bytesDiff);
+                lastTotalBytes = currentBytes;
+              }
+            }
+            // 更新数据包数
+            if (info.totalPackets) {
+              // 如果 flv.js 提供了数据包数，可以在这里更新
+            }
+          }
+        });
+      }
+
       flvPlayer.on(flvjs.Events.ERROR, (errorType, errorDetail) => {
         console.error("Player " + index + " Error:", errorType, errorDetail);
         showError("播放器 " + (index + 1) + " 出错: " + errorType);
@@ -516,24 +570,35 @@ function playVideos() {
 
       // 使用 Performance API 来监控网络传输
       let performanceObserver = null;
+      let performanceBytes = 0;
+      let lastCheckedResources = new Set();
       try {
         performanceObserver = new PerformanceObserver((list) => {
           for (const entry of list.getEntries()) {
-            if (entry.name && (entry.name.includes(url.trim()) || entry.initiatorType === 'video' || entry.initiatorType === 'xmlhttprequest')) {
+            // 检查是否是当前视频流的请求
+            if (entry.name && entry.name.includes(url.trim())) {
               if (entry.transferSize && entry.transferSize > 0) {
-                stats.addBytes(entry.transferSize);
+                // 避免重复计算
+                const entryId = entry.name + '_' + entry.startTime;
+                if (!lastCheckedResources.has(entryId)) {
+                  lastCheckedResources.add(entryId);
+                  const bytesDiff = entry.transferSize - performanceBytes;
+                  if (bytesDiff > 0) {
+                    stats.addBytes(bytesDiff);
+                    performanceBytes = entry.transferSize;
+                  }
+                }
               }
             }
           }
         });
-        performanceObserver.observe({ entryTypes: ['resource'] });
+        performanceObserver.observe({ entryTypes: ['resource', 'navigation'] });
       } catch (e) {
         // 浏览器可能不支持 Performance Observer API
         console.log('Performance Observer not supported');
       }
 
       // 定期检查 Performance API 中的资源条目
-      let lastCheckedResources = new Set();
       const performanceCheckInterval = setInterval(() => {
         try {
           const resources = performance.getEntriesByType('resource');
@@ -543,7 +608,11 @@ function playVideos() {
               if (!lastCheckedResources.has(resourceId)) {
                 lastCheckedResources.add(resourceId);
                 if (resource.transferSize && resource.transferSize > 0) {
-                  stats.addBytes(resource.transferSize);
+                  const bytesDiff = resource.transferSize - performanceBytes;
+                  if (bytesDiff > 0) {
+                    stats.addBytes(bytesDiff);
+                    performanceBytes = resource.transferSize;
+                  }
                 }
               }
             }
