@@ -1,6 +1,45 @@
+# Git
 .git
 .gitignore
+.github
+
+# Documentation
 README.md
+LICENSE
+*.md
+
+# Docker
 Dockerfile
 docker-compose.yml
 .dockerignore
+
+# Development files
+data/
+*.db
+*.log
+.env
+.env.local
+
+# Build artifacts
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+main
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Other
+nginx.conf
+push.rb
+Rakefile

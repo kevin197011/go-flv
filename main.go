@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"database/sql"
 	"embed"
 	"fmt"
@@ -9,8 +10,10 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"os/signal"
 	"path/filepath"
 	"strconv"
+	"syscall"
 	"time"
 
 	"github.com/gin-contrib/sessions"
@@ -72,10 +75,16 @@ func initDB() error {
 	}
 
 	// 打开数据库连接
-	DB, err = sql.Open("sqlite", dbPath)
+	DB, err = sql.Open("sqlite", dbPath+"?_journal_mode=WAL&_foreign_keys=1")
 	if err != nil {
 		return fmt.Errorf("failed to connect to database: %w", err)
 	}
+
+	// 配置连接池
+	DB.SetMaxOpenConns(25)                  // 最大打开连接数
+	DB.SetMaxIdleConns(5)                   // 最大空闲连接数
+	DB.SetConnMaxLifetime(5 * time.Minute)  // 连接最大生命周期
+	DB.SetConnMaxIdleTime(10 * time.Minute) // 连接最大空闲时间
 
 	// 测试连接
 	if err := DB.Ping(); err != nil {
@@ -357,13 +366,93 @@ func logout(c *gin.Context) {
 
 func corsMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
-		c.Writer.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+		// 允许的来源（可以通过环境变量配置）
+		origin := c.GetHeader("Origin")
+		allowOrigin := os.Getenv("CORS_ORIGIN")
+		if allowOrigin == "" {
+			allowOrigin = "*" // 默认允许所有来源
+		} else if origin != "" && origin == allowOrigin {
+			allowOrigin = origin // 允许特定来源
+		}
+
+		c.Writer.Header().Set("Access-Control-Allow-Origin", allowOrigin)
+		c.Writer.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
 		c.Writer.Header().Set("Access-Control-Allow-Headers", "Origin, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization")
+		c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
+		c.Writer.Header().Set("Access-Control-Max-Age", "86400") // 24小时
+
 		if c.Request.Method == "OPTIONS" {
 			c.AbortWithStatus(204)
 			return
 		}
+		c.Next()
+	}
+}
+
+// requestLoggerMiddleware 记录请求日志
+func requestLoggerMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		start := time.Now()
+		path := c.Request.URL.Path
+		raw := c.Request.URL.RawQuery
+
+		// 处理请求
+		c.Next()
+
+		// 记录日志
+		latency := time.Since(start)
+		clientIP := c.ClientIP()
+		method := c.Request.Method
+		statusCode := c.Writer.Status()
+		errorMessage := c.Errors.ByType(gin.ErrorTypePrivate).String()
+
+		if raw != "" {
+			path = path + "?" + raw
+		}
+
+		if statusCode >= 400 {
+			log.Printf("[%s] %s %s %d %v %s %s",
+				"ERROR",
+				method,
+				path,
+				statusCode,
+				latency,
+				clientIP,
+				errorMessage,
+			)
+		} else {
+			log.Printf("[%s] %s %s %d %v %s",
+				"INFO",
+				method,
+				path,
+				statusCode,
+				latency,
+				clientIP,
+			)
+		}
+	}
+}
+
+// recoveryMiddleware 错误恢复中间件
+func recoveryMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		defer func() {
+			if err := recover(); err != nil {
+				log.Printf("[PANIC] %s %s - %v", c.Request.Method, c.Request.URL.Path, err)
+
+				if isJSONRequest(c) {
+					c.JSON(http.StatusInternalServerError, gin.H{
+						"error": "Internal server error",
+					})
+				} else {
+					c.HTML(http.StatusInternalServerError, "error.html", gin.H{
+						"message": "Internal server error",
+					})
+				}
+				c.Abort()
+			}
+		}()
+
 		c.Next()
 	}
 }
@@ -520,14 +609,70 @@ func parseVideoID(c *gin.Context) (uint, error) {
 	return uint(id), nil
 }
 
+// ==================== Health Check ====================
+
+func healthCheck(c *gin.Context) {
+	// 检查数据库连接
+	if err := DB.Ping(); err != nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{
+			"status":  "unhealthy",
+			"message": "Database connection failed",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"status":    "healthy",
+		"message":   "Service is running",
+		"timestamp": time.Now().Unix(),
+	})
+}
+
+func readinessCheck(c *gin.Context) {
+	// 检查数据库连接
+	if err := DB.Ping(); err != nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{
+			"status":  "not ready",
+			"message": "Database connection failed",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"status":  "ready",
+		"message": "Service is ready",
+	})
+}
+
 // ==================== Routes ====================
 
 func setupRouter() *gin.Engine {
+	// 根据环境变量设置Gin模式
+	ginMode := os.Getenv("GIN_MODE")
+	if ginMode != "" {
+		gin.SetMode(ginMode)
+	}
+
 	r := gin.Default()
+
+	// 设置请求大小限制（默认32MB，可通过环境变量配置）
+	maxBodySize := 32 << 20 // 32MB
+	if sizeEnv := os.Getenv("MAX_BODY_SIZE"); sizeEnv != "" {
+		if size, err := strconv.ParseInt(sizeEnv, 10, 64); err == nil {
+			maxBodySize = int(size)
+		}
+	}
+	r.MaxMultipartMemory = int64(maxBodySize)
 
 	// Add global middleware
 	r.Use(sessionMiddleware(""))
 	r.Use(corsMiddleware())
+	r.Use(requestLoggerMiddleware()) // 请求日志中间件
+	r.Use(recoveryMiddleware())      // 错误恢复中间件
+
+	// Health check endpoints (public)
+	r.GET("/health", healthCheck)
+	r.GET("/ready", readinessCheck)
 
 	// Public web routes (video player)
 	r.GET("/", getPlayerPage)
@@ -578,10 +723,15 @@ func setupRouter() *gin.Engine {
 // ==================== Main ====================
 
 func main() {
+	// 设置日志格式
+	log.SetFlags(log.LstdFlags | log.Lshortfile)
+	log.Println("Starting go-flv server...")
+
 	// 初始化数据库
 	if err := initDB(); err != nil {
-		log.Fatal("Failed to initialize database:", err)
+		log.Fatalf("Failed to initialize database: %v", err)
 	}
+	log.Println("Database initialized successfully")
 
 	r := setupRouter()
 
@@ -605,7 +755,46 @@ func main() {
 		port = ":" + envPort
 	}
 
-	if err := r.Run(port); err != nil {
-		log.Fatal("Failed to start server:", err)
+	// 创建HTTP服务器
+	srv := &http.Server{
+		Addr:    port,
+		Handler: r,
+		// 优化服务器配置
+		ReadTimeout:  15 * time.Second,
+		WriteTimeout: 15 * time.Second,
+		IdleTimeout:  60 * time.Second,
 	}
+
+	// 在goroutine中启动服务器
+	go func() {
+		log.Printf("Server starting on port %s", port)
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Fatalf("Failed to start server: %v", err)
+		}
+	}()
+
+	// 等待中断信号以优雅地关闭服务器
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	<-quit
+	log.Println("Shutting down server...")
+
+	// 优雅关闭，给30秒时间完成当前请求
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	if err := srv.Shutdown(ctx); err != nil {
+		log.Fatalf("Server forced to shutdown: %v", err)
+	}
+
+	// 关闭数据库连接
+	if DB != nil {
+		if err := DB.Close(); err != nil {
+			log.Printf("Error closing database: %v", err)
+		} else {
+			log.Println("Database connection closed")
+		}
+	}
+
+	log.Println("Server exited")
 }
