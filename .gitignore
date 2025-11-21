@@ -4,3 +4,4 @@ go-flv
 *.db
 data/
 *.log
+.cursor

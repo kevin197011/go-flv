@@ -1,5 +1,80 @@
 let players = [];
 
+// 统计信息类
+class PlayerStats {
+  constructor() {
+    this.reset();
+  }
+
+  reset() {
+    this.totalBytes = 0;
+    this.totalPackets = 0;
+    this.videoFrames = 0;
+    this.keyFrames = 0;
+    this.lastKeyFrameTime = 0;
+    this.currentGOP = 0;
+    this.maxGOP = 0;
+    this.startTime = Date.now();
+    this.lastUpdateTime = Date.now();
+    this.lastBytes = 0;
+    this.lastFrames = 0;
+    this.bitrate = 0; // bps
+    this.fps = 0;
+  }
+
+  addBytes(bytes) {
+    this.totalBytes += bytes;
+    this.totalPackets++;
+  }
+
+  addVideoFrame(isKeyFrame = false) {
+    this.videoFrames++;
+    if (isKeyFrame) {
+      this.keyFrames++;
+      if (this.lastKeyFrameTime > 0) {
+        this.currentGOP = this.videoFrames - this.lastKeyFrameTime;
+        this.maxGOP = Math.max(this.maxGOP, this.currentGOP);
+      }
+      this.lastKeyFrameTime = this.videoFrames;
+      this.currentGOP = 0;
+    } else {
+      this.currentGOP++;
+    }
+  }
+
+  update() {
+    const now = Date.now();
+    const timeDiff = (now - this.lastUpdateTime) / 1000; // 秒
+    const bytesDiff = this.totalBytes - this.lastBytes;
+    const framesDiff = this.videoFrames - this.lastFrames;
+
+    if (timeDiff > 0) {
+      // 计算码率 (bps)
+      this.bitrate = Math.round((bytesDiff * 8) / timeDiff);
+      // 计算帧率 (fps)
+      this.fps = Math.round((framesDiff / timeDiff) * 10) / 10;
+    }
+
+    this.lastUpdateTime = now;
+    this.lastBytes = this.totalBytes;
+    this.lastFrames = this.videoFrames;
+  }
+
+  getStats() {
+    this.update();
+    return {
+      bitrate: this.bitrate,
+      fps: this.fps,
+      packets: this.totalPackets,
+      keyFrames: this.keyFrames,
+      gop: this.currentGOP,
+      maxGOP: this.maxGOP,
+      totalBytes: this.totalBytes,
+      totalFrames: this.videoFrames
+    };
+  }
+}
+
 function showNotification(message, type = 'error') {
   const container = document.getElementById('notification-container');
   const id = Date.now();
@@ -167,6 +242,23 @@ function createPlayerElement(url, index) {
   videoWrapper.appendChild(loadingDiv);
   wrapper.appendChild(videoWrapper);
 
+  // Statistics display
+  const statsDiv = document.createElement("div");
+  statsDiv.id = `stats_${index}`;
+  statsDiv.className = "px-4 py-2 bg-gray-900 text-white text-xs font-mono border-t border-gray-700";
+  statsDiv.style.display = "none";
+  statsDiv.innerHTML = `
+    <div class="grid grid-cols-3 gap-2">
+      <div><span class="text-gray-400">码率:</span> <span class="text-green-400" id="bitrate_${index}">0</span> bps</div>
+      <div><span class="text-gray-400">帧率:</span> <span class="text-green-400" id="fps_${index}">0</span> fps</div>
+      <div><span class="text-gray-400">数据包:</span> <span class="text-blue-400" id="packets_${index}">0</span></div>
+      <div><span class="text-gray-400">关键帧:</span> <span class="text-yellow-400" id="keyframes_${index}">0</span></div>
+      <div><span class="text-gray-400">GOP:</span> <span class="text-purple-400" id="gop_${index}">0</span></div>
+      <div><span class="text-gray-400">最大GOP:</span> <span class="text-purple-400" id="maxgop_${index}">0</span></div>
+    </div>
+  `;
+  wrapper.appendChild(statsDiv);
+
   // Controls
   const controls = document.createElement("div");
   controls.className = "px-4 py-3 bg-gray-50 flex justify-between items-center border-t border-gray-200";
@@ -199,6 +291,8 @@ function createPlayerElement(url, index) {
       <span class="w-2 h-2 bg-green-400 rounded-full mr-2"></span>
       <span>播放中</span>
     `;
+    // 显示统计信息
+    statsDiv.style.display = 'block';
   });
 
   video.addEventListener('error', () => {
@@ -216,7 +310,7 @@ function createPlayerElement(url, index) {
     `;
   });
 
-  return { wrapper, video };
+  return { wrapper, video, statsDiv };
 }
 
 function toggleMute(videoElement, button, statusDiv) {
@@ -240,10 +334,49 @@ function toggleMute(videoElement, button, statusDiv) {
   }
 }
 
+function updateStats(playerIndex, stats) {
+  const statsData = stats.getStats();
+  const formatBitrate = (bps) => {
+    if (bps >= 1000000) return (bps / 1000000).toFixed(2) + ' Mbps';
+    if (bps >= 1000) return (bps / 1000).toFixed(2) + ' Kbps';
+    return bps + ' bps';
+  };
+
+  const bitrateEl = document.getElementById(`bitrate_${playerIndex}`);
+  const fpsEl = document.getElementById(`fps_${playerIndex}`);
+  const packetsEl = document.getElementById(`packets_${playerIndex}`);
+  const keyframesEl = document.getElementById(`keyframes_${playerIndex}`);
+  const gopEl = document.getElementById(`gop_${playerIndex}`);
+  const maxgopEl = document.getElementById(`maxgop_${playerIndex}`);
+
+  if (bitrateEl) bitrateEl.textContent = formatBitrate(statsData.bitrate);
+  if (fpsEl) fpsEl.textContent = statsData.fps.toFixed(1);
+  if (packetsEl) packetsEl.textContent = statsData.packets;
+  if (keyframesEl) keyframesEl.textContent = statsData.keyFrames;
+  if (gopEl) gopEl.textContent = statsData.gop;
+  if (maxgopEl) maxgopEl.textContent = statsData.maxGOP;
+}
+
 function destroyAllPlayers() {
   players.forEach((player) => {
     if (player.flvPlayer) {
       player.flvPlayer.destroy();
+    }
+    if (player.statsInterval) {
+      clearInterval(player.statsInterval);
+    }
+    if (player.statsCheckInterval) {
+      clearInterval(player.statsCheckInterval);
+    }
+    if (player.performanceCheckInterval) {
+      clearInterval(player.performanceCheckInterval);
+    }
+    if (player.performanceObserver) {
+      try {
+        player.performanceObserver.disconnect();
+      } catch (e) {
+        // 忽略错误
+      }
     }
   });
   players = [];
@@ -257,7 +390,8 @@ function playVideos() {
     .getElementById("flvUrls")
     .value.trim()
     .split("\n")
-    .filter((url) => url.trim());
+    .map((url) => url.trim())
+    .filter((url) => url && !url.startsWith("#")); // 过滤空行和以 # 开头的注释行
 
   if (urls.length === 0) {
     showError("请输入至少一个 FLV 视频 URL");
@@ -274,8 +408,11 @@ function playVideos() {
 
   urls.forEach((url, index) => {
     try {
-      const { wrapper, video } = createPlayerElement(url, index);
+      const { wrapper, video, statsDiv } = createPlayerElement(url, index);
       playersContainer.appendChild(wrapper);
+
+      // 创建统计对象
+      const stats = new PlayerStats();
 
       const flvPlayer = flvjs.createPlayer({
         type: "flv",
@@ -284,6 +421,87 @@ function playVideos() {
       });
 
       flvPlayer.attachMediaElement(video);
+
+      // 监听统计信息
+      let lastVideoTime = 0;
+      let lastFrameUpdateTime = Date.now();
+      let frameUpdateCount = 0;
+      let frameCounter = 0;
+      const estimatedKeyFrameInterval = 30; // 假设每30帧有一个关键帧（可根据实际情况调整）
+      let lastPlayTime = video.currentTime || 0;
+
+      // 监听视频时间更新来计算帧率和检测关键帧
+      video.addEventListener('timeupdate', () => {
+        const currentTime = video.currentTime;
+        const now = Date.now();
+        if (currentTime !== lastVideoTime) {
+          frameUpdateCount++;
+          frameCounter++;
+          lastVideoTime = currentTime;
+
+          // 估算关键帧（基于帧计数）
+          if (frameCounter >= estimatedKeyFrameInterval) {
+            stats.addVideoFrame(true); // 关键帧
+            frameCounter = 0;
+          } else {
+            stats.addVideoFrame(false); // 非关键帧
+          }
+
+          // 每1秒计算一次帧率
+          if (now - lastFrameUpdateTime >= 1000) {
+            const timeDiff = (now - lastFrameUpdateTime) / 1000;
+            const estimatedFps = frameUpdateCount / timeDiff;
+            frameUpdateCount = 0;
+            lastFrameUpdateTime = now;
+          }
+        }
+      });
+
+      // 监听视频播放来检测关键帧
+      video.addEventListener('play', () => {
+        lastPlayTime = video.currentTime;
+      });
+
+      video.addEventListener('seeked', () => {
+        // 时间跳跃通常发生在关键帧
+        const timeDiff = Math.abs(video.currentTime - lastPlayTime);
+        if (timeDiff > 0.1) {
+          stats.addVideoFrame(true); // 检测到关键帧
+          frameCounter = 0; // 重置帧计数器
+        }
+        lastPlayTime = video.currentTime;
+      });
+
+      // 监听 flv.js 的统计信息（如果可用）
+      const statsCheckInterval = setInterval(() => {
+        try {
+          // 尝试从 flv.js 获取统计信息
+          if (flvPlayer.statisticsInfo) {
+            const info = flvPlayer.statisticsInfo;
+            if (info && info.totalBytesLoaded) {
+              const bytesDiff = info.totalBytesLoaded - stats.totalBytes;
+              if (bytesDiff > 0) {
+                stats.addBytes(bytesDiff);
+              }
+            }
+          }
+        } catch (e) {
+          // 忽略错误
+        }
+      }, 1000);
+
+      // 定期更新统计信息显示
+      const statsUpdateInterval = setInterval(() => {
+        updateStats(index, stats);
+      }, 500); // 每500ms更新一次
+
+      // 监听关键帧（通过 flv.js 事件，如果可用）
+      flvPlayer.on(flvjs.Events.MEDIA_INFO, (mediaInfo) => {
+        // 媒体信息更新
+        if (mediaInfo && mediaInfo.hasVideo) {
+          // 可以在这里获取视频信息
+        }
+      });
 
       flvPlayer.on(flvjs.Events.ERROR, (errorType, errorDetail) => {
         console.error("Player " + index + " Error:", errorType, errorDetail);
@@ -296,7 +514,54 @@ function playVideos() {
         showError("播放器 " + (index + 1) + " 播放失败: " + e.message);
       });
 
-      players.push({ flvPlayer, video });
+      // 使用 Performance API 来监控网络传输
+      let performanceObserver = null;
+      try {
+        performanceObserver = new PerformanceObserver((list) => {
+          for (const entry of list.getEntries()) {
+            if (entry.name && (entry.name.includes(url.trim()) || entry.initiatorType === 'video' || entry.initiatorType === 'xmlhttprequest')) {
+              if (entry.transferSize && entry.transferSize > 0) {
+                stats.addBytes(entry.transferSize);
+              }
+            }
+          }
+        });
+        performanceObserver.observe({ entryTypes: ['resource'] });
+      } catch (e) {
+        // 浏览器可能不支持 Performance Observer API
+        console.log('Performance Observer not supported');
+      }
+
+      // 定期检查 Performance API 中的资源条目
+      let lastCheckedResources = new Set();
+      const performanceCheckInterval = setInterval(() => {
+        try {
+          const resources = performance.getEntriesByType('resource');
+          for (const resource of resources) {
+            if (resource.name && resource.name.includes(url.trim())) {
+              const resourceId = resource.name + '_' + resource.startTime;
+              if (!lastCheckedResources.has(resourceId)) {
+                lastCheckedResources.add(resourceId);
+                if (resource.transferSize && resource.transferSize > 0) {
+                  stats.addBytes(resource.transferSize);
+                }
+              }
+            }
+          }
+        } catch (e) {
+          // 忽略错误
+        }
+      }, 2000);
+
+      players.push({
+        flvPlayer,
+        video,
+        stats,
+        statsInterval: statsUpdateInterval,
+        statsCheckInterval: statsCheckInterval,
+        performanceCheckInterval: performanceCheckInterval,
+        performanceObserver
+      });
     } catch (e) {
       console.error("Player " + index + " creation error:", e);
       showError("播放器 " + (index + 1) + " 创建失败: " + e.message);
@@ -305,6 +570,138 @@ function playVideos() {
 
   updatePlayerCount();
   updateEmptyState();
+}
+
+// 切换注释状态（注释/取消注释）
+function toggleComment() {
+  const textarea = document.getElementById("flvUrls");
+  if (!textarea) return;
+
+  const start = textarea.selectionStart;
+  const end = textarea.selectionEnd;
+  const text = textarea.value;
+  const lines = text.split("\n");
+
+  // 确定需要处理的行范围
+  let startLine = 0;
+  let endLine = lines.length - 1;
+  let currentPos = 0;
+
+  // 找到选中文本所在的行
+  for (let i = 0; i < lines.length; i++) {
+    const lineLength = lines[i].length + 1; // +1 for newline
+    if (currentPos <= start && start < currentPos + lineLength) {
+      startLine = i;
+    }
+    if (currentPos <= end && end <= currentPos + lineLength) {
+      endLine = i;
+      break;
+    }
+    currentPos += lineLength;
+  }
+
+  // 如果没有选中文本，只处理当前行
+  if (start === end) {
+    endLine = startLine;
+  }
+
+  // 检查选中行的注释状态
+  let allCommented = true;
+  let allUncommented = true;
+  for (let i = startLine; i <= endLine; i++) {
+    const trimmedLine = lines[i].trim();
+    if (trimmedLine && !trimmedLine.startsWith("#")) {
+      allCommented = false;
+    } else if (trimmedLine && trimmedLine.startsWith("#")) {
+      allUncommented = false;
+    }
+  }
+
+  // 决定是注释还是取消注释
+  const shouldComment = !allCommented;
+
+  // 记录每行的偏移量变化
+  const lineOffsets = new Array(lines.length).fill(0);
+
+  // 处理每一行
+  for (let i = startLine; i <= endLine; i++) {
+    const line = lines[i];
+    const trimmedLine = line.trim();
+
+    if (!trimmedLine) {
+      // 空行跳过
+      continue;
+    }
+
+    if (shouldComment) {
+      // 添加注释
+      if (!trimmedLine.startsWith("#")) {
+        // 找到第一个非空白字符的位置
+        const firstNonSpace = line.search(/\S/);
+        if (firstNonSpace === -1) {
+          lines[i] = "# " + line;
+          lineOffsets[i] = 2; // # 和空格
+        } else {
+          lines[i] = line.slice(0, firstNonSpace) + "# " + line.slice(firstNonSpace);
+          lineOffsets[i] = 2; // # 和空格
+        }
+      }
+    } else {
+      // 取消注释
+      if (trimmedLine.startsWith("#")) {
+        const firstNonSpace = line.search(/\S/);
+        if (firstNonSpace !== -1 && line[firstNonSpace] === "#") {
+          // 移除 # 和后面的空格（如果有）
+          let removeLength = 1;
+          if (line[firstNonSpace + 1] === " ") {
+            removeLength = 2;
+          }
+          lines[i] = line.slice(0, firstNonSpace) + line.slice(firstNonSpace + removeLength);
+          lineOffsets[i] = -removeLength;
+        }
+      }
+    }
+  }
+
+  // 计算光标位置的总偏移量
+  // 累加从开始到选中位置的所有行的偏移
+  let startOffset = 0;
+  let endOffset = 0;
+  let pos = 0;
+
+  for (let i = 0; i < lines.length; i++) {
+    const originalLineLength = i < lines.length - 1
+      ? (lines[i].length - lineOffsets[i]) + 1  // 原始长度 + 换行符
+      : (lines[i].length - lineOffsets[i]);     // 最后一行没有换行符
+
+    // 计算到 start 位置的偏移
+    if (pos + originalLineLength <= start) {
+      // 光标在这行之后，累加这行的偏移
+      startOffset += lineOffsets[i];
+    } else if (pos <= start) {
+      // 光标在这行内，累加这行的偏移
+      startOffset += lineOffsets[i];
+    }
+
+    // 计算到 end 位置的偏移
+    if (pos + originalLineLength <= end) {
+      endOffset += lineOffsets[i];
+    } else if (pos <= end) {
+      endOffset += lineOffsets[i];
+    }
+
+    pos += originalLineLength;
+  }
+
+  // 更新文本内容
+  const newText = lines.join("\n");
+  textarea.value = newText;
+
+  // 恢复光标位置
+  const newStart = Math.max(0, start + startOffset);
+  const newEnd = Math.max(0, end + endOffset);
+  textarea.setSelectionRange(newStart, newEnd);
+  textarea.focus();
 }
 
 // 页面关闭时清理所有播放器
@@ -318,5 +715,16 @@ window.onload = function () {
   const urlInput = document.getElementById("flvUrls");
   if (urlInput && urlInput.value.trim()) {
     playVideos();
+  }
+
+  // 添加快捷键支持：Ctrl+/ 或 Cmd+/ 切换注释
+  if (urlInput) {
+    urlInput.addEventListener("keydown", function (e) {
+      // 检测 Ctrl+/ (Windows/Linux) 或 Cmd+/ (Mac)
+      if ((e.ctrlKey || e.metaKey) && e.key === "/") {
+        e.preventDefault();
+        toggleComment();
+      }
+    });
   }
 };

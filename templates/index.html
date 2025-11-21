@@ -72,10 +72,21 @@
                     </div>
                     <div class="p-6">
                         <div class="mb-6">
-                            <label class="block text-sm font-semibold text-gray-800 mb-2">FLV 视频 URL（每行一个）</label>
+                            <div class="flex items-center justify-between mb-2">
+                                <label class="block text-sm font-semibold text-gray-800">FLV 视频 URL（每行一个，支持 # 注释）</label>
+                                <span class="text-xs text-gray-500 flex items-center">
+                                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                                    </svg>
+                                    <kbd class="px-2 py-1 bg-gray-100 border border-gray-300 rounded text-xs font-mono">Ctrl</kbd>
+                                    <span class="mx-1">+</span>
+                                    <kbd class="px-2 py-1 bg-gray-100 border border-gray-300 rounded text-xs font-mono">/</kbd>
+                                    <span class="ml-2">切换注释</span>
+                                </span>
+                            </div>
                             <textarea id="flvUrls"
                                 class="block w-full rounded-lg border-2 border-gray-300 bg-gray-50 px-3 py-2 text-gray-900 placeholder-gray-500 focus:border-primary focus:bg-white focus:ring-primary focus:ring-2 focus:ring-opacity-50 transition-all duration-200 font-mono min-h-[120px]"
-                                placeholder="请输入 FLV 视频 URL，每行一个&#10;例如：&#10;https://example.com/video1.flv&#10;https://example.com/video2.flv">{{.URL}}</textarea>
+                                placeholder="请输入 FLV 视频 URL，每行一个&#10;以 # 开头的行将被忽略（注释）&#10;使用 Ctrl+/ 或 Cmd+/ 快速切换注释&#10;&#10;例如：&#10;http://localhost:8080/video1.flv&#10;http://localhost:8080/video2.flv&#10;# http://localhost:8080/video3.flv（这行不会加载）">{{.URL}}</textarea>
                         </div>
                         <div class="flex justify-end gap-4">
                             <button onclick="clearPlayers()"
